@@ -96,24 +96,25 @@ default_alloc_pages(size_t n) {
         }
     }
     if (page != NULL) {
+   	list_entry_t* pr=list_prev(&page->page_link);//增添代码
         list_del(&(page->page_link));
         if (page->property > n) {
             struct Page *p = page + n;
             p->property = page->property - n;
-            list_add(&free_list, &(p->page_link));
-    }
-        nr_free -= n;
-        ClearPageProperty(page);
-    }
-    return page;
+			list_add(pr,&(p->page_link));//增添代码
+            //list_add(&free_list, &(p->page_link));
+		}
+		nr_free -= n;
+		ClearPageProperty(page); 
+	}
+	return page;
 }
 
-static void
-default_free_pages(struct Page *base, size_t n) {
-    assert(n > 0);
-    struct Page *p = base;
-    for (; p != base + n; p ++) {
-        assert(!PageReserved(p) && !PageProperty(p));
+static void default_free_pages(struct Page *base, size_t n) {
+	assert(n > 0);
+	struct Page *p = base;
+	for (; p != base + n; p ++) { 
+		assert(!PageReserved(p) && !PageProperty(p));
         p->flags = 0;
         set_page_ref(p, 0);
     }
@@ -136,7 +137,18 @@ default_free_pages(struct Page *base, size_t n) {
         }
     }
     nr_free += n;
-    list_add(&free_list, &(base->page_link));
+    //list_add(&free_list, &(base->page_link));
+	list_entry_t *curr=&free_list;
+	while((curr=list_next(curr))!=&free_list){
+		struct Page *currp=le2page(curr,page_link);
+		if(p<currp){
+			list_add_before(curr,&(base->page_link));
+			break;
+		}
+	}
+	if(curr==&free_list){
+		list_add_before(curr,&(base->page_link));
+	}
 }
 
 static size_t
